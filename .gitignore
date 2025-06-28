@@ -37,6 +37,8 @@ yarn-error.log*
 # google cloud service account
 *.json
 service-account.json
+google-cloud-credentials.json
+hybrid-sunbeam-464101-c2-ce26f1c7ffc5.json
 
 # vercel
 .vercel
