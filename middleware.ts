@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // ログイン済みユーザーのリダイレクト
-  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/')) {
+  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/' || request.nextUrl.pathname === '/signup')) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

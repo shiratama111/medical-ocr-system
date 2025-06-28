@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -96,6 +97,15 @@ export default function LoginPage() {
             >
               {isLoading ? 'ログイン中...' : 'ログイン'}
             </Button>
+          </div>
+
+          <div className="text-center">
+            <p className="text-sm text-gray-600">
+              アカウントをお持ちでない方は{' '}
+              <Link href="/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
+                新規登録
+              </Link>
+            </p>
           </div>
         </form>
       </div>
