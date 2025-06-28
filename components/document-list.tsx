@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { FileText, Edit, Download, CheckCircle, Clock, AlertCircle } from 'lucide-react'
+import { DownloadMenu } from '@/components/download-menu'
+import { FileText, Edit, CheckCircle, Clock, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import Link from 'next/link'
@@ -155,10 +156,7 @@ export function DocumentList({ userId }: DocumentListProps) {
                       </Link>
                       
                       {doc.status === 'confirmed' && (
-                        <Button size="sm" variant="outline" className="flex items-center gap-1">
-                          <Download className="h-3 w-3" />
-                          ダウンロード
-                        </Button>
+                        <DownloadMenu documentId={doc.id} fileName={doc.file_name} />
                       )}
                     </>
                   )}
