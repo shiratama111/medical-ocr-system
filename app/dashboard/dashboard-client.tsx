@@ -69,10 +69,12 @@ export default function DashboardClient({ userId }: DashboardClientProps) {
           />
         </div>
 
-        {/* デバッグコントロール */}
-        <div>
-          <DebugControls documentId={latestDocumentId} />
-        </div>
+        {/* デバッグコントロール - 開発環境のみ表示 */}
+        {process.env.NODE_ENV === 'development' && (
+          <div>
+            <DebugControls documentId={latestDocumentId} />
+          </div>
+        )}
       </main>
     </div>
   )

@@ -62,7 +62,8 @@ export function DocumentList({ userId, onDocumentsChange }: DocumentListProps) {
 
   useEffect(() => {
     fetchDocuments()
-  }, [userId]) // fetchDocuments is stable and doesn't need to be in deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
 
 
 
