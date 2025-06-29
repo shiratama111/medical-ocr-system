@@ -24,7 +24,7 @@ export interface ExtractedData {
 
 export class GeminiAIService {
   private genAI: GoogleGenerativeAI;
-  private model: any;
+  private model: ReturnType<GoogleGenerativeAI['getGenerativeModel']>;
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
