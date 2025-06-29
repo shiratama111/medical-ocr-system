@@ -3,18 +3,16 @@
 import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { Upload, FileText, AlertCircle } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 
 interface FileUploadProps {
   userId: string
   onUploadComplete?: () => void
 }
 
-export function FileUpload({ userId, onUploadComplete }: FileUploadProps) {
+export function FileUpload({ onUploadComplete }: FileUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([])
-  const supabase = createClient()
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     setUploading(true)
@@ -23,34 +21,23 @@ export function FileUpload({ userId, onUploadComplete }: FileUploadProps) {
 
     try {
       for (const file of acceptedFiles) {
-        if (file.size > 20 * 1024 * 1024) {
-          setError(`ファイル "${file.name}" は20MBを超えています`)
-          continue
+        console.log(`Uploading file: ${file.name}, size: ${file.size} bytes`)
+
+        // サーバーサイドアップロードAPIを使用
+        const formData = new FormData()
+        formData.append('file', file)
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        })
+
+        const result = await response.json()
+        console.log('Upload API response:', result)
+
+        if (!response.ok) {
+          throw new Error(`アップロードエラー: ${result.error || 'Unknown error'}`)
         }
-
-        // Supabase Storageにアップロード
-        const fileName = `${userId}/${Date.now()}_${file.name}`
-        const { error: uploadError } = await supabase.storage
-          .from('documents')
-          .upload(fileName, file)
-
-        if (uploadError) throw uploadError
-
-        // データベースに記録
-        const { data: fileUrl } = supabase.storage
-          .from('documents')
-          .getPublicUrl(fileName)
-
-        const { error: dbError } = await supabase
-          .from('documents')
-          .insert({
-            user_id: userId,
-            file_name: file.name,
-            file_url: fileUrl.publicUrl,
-            status: 'pending'
-          })
-
-        if (dbError) throw dbError
 
         uploaded.push(file.name)
       }
@@ -58,12 +45,13 @@ export function FileUpload({ userId, onUploadComplete }: FileUploadProps) {
       setUploadedFiles(uploaded)
       if (onUploadComplete) onUploadComplete()
     } catch (err) {
-      setError('アップロードに失敗しました')
-      console.error(err)
+      console.error('Upload error details:', err)
+      const errorMessage = err instanceof Error ? err.message : 'アップロードに失敗しました'
+      setError(errorMessage)
     } finally {
       setUploading(false)
     }
-  }, [userId, supabase, onUploadComplete])
+  }, [onUploadComplete])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -71,7 +59,8 @@ export function FileUpload({ userId, onUploadComplete }: FileUploadProps) {
       'application/pdf': ['.pdf']
     },
     multiple: true,
-    disabled: uploading
+    disabled: uploading,
+    maxSize: undefined // サイズ制限を撤廃
   })
 
   return (
@@ -95,7 +84,7 @@ export function FileUpload({ userId, onUploadComplete }: FileUploadProps) {
               または<span className="text-blue-600 hover:underline">ファイルを選択</span>
             </p>
             <p className="text-xs text-gray-400 mt-2">
-              最大ファイルサイズ: 20MB
+              ファイルサイズ制限なし
             </p>
           </div>
         )}

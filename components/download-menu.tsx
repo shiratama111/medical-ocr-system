@@ -13,18 +13,23 @@ export function DownloadMenu({ documentId, fileName }: DownloadMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
 
-  const handleDownload = async (format: 'json' | 'csv') => {
+  const handleDownload = async (format: 'json' | 'csv' | 'txt') => {
     setIsDownloading(true)
     setIsOpen(false)
 
     try {
-      const response = await fetch(`/api/documents/${documentId}/download`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ format })
-      })
+      let response
+      if (format === 'txt') {
+        response = await fetch(`/api/documents/${documentId}/download-text`)
+      } else {
+        response = await fetch(`/api/documents/${documentId}/download`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ format })
+        })
+      }
 
       if (!response.ok) {
         throw new Error('ダウンロードに失敗しました')
@@ -35,8 +40,9 @@ export function DownloadMenu({ documentId, fileName }: DownloadMenuProps) {
       const link = window.document.createElement('a')
       link.href = url
       
-      const extension = format === 'csv' ? 'csv' : 'json'
-      link.download = `${fileName.replace('.pdf', '')}_extracted_data.${extension}`
+      const extension = format === 'csv' ? 'csv' : format === 'txt' ? 'txt' : 'json'
+      const fileType = format === 'txt' ? 'ocr' : 'extracted_data'
+      link.download = `${fileName.replace('.pdf', '')}_${fileType}.${extension}`
       
       window.document.body.appendChild(link)
       link.click()
@@ -66,6 +72,12 @@ export function DownloadMenu({ documentId, fileName }: DownloadMenuProps) {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
           <div className="py-1">
+            <button
+              onClick={() => handleDownload('txt')}
+              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+            >
+              OCRテキスト（.txt）
+            </button>
             <button
               onClick={() => handleDownload('json')}
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"

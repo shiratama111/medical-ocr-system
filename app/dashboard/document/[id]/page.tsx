@@ -28,12 +28,15 @@ export default async function DocumentEditPage({ params }: PageProps) {
     notFound()
   }
 
-  // 抽出データの取得
-  const { data: extractedData, error: dataError } = await supabase
+  // 抽出データの取得（最新のレコードを取得）
+  const { data: extractedDataArray, error: dataError } = await supabase
     .from('extracted_data')
     .select('*')
     .eq('document_id', id)
-    .single()
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  const extractedData = extractedDataArray?.[0] || null
 
   if (dataError) {
     console.error('Error fetching extracted data:', dataError)

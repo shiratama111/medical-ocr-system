@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { FileUpload } from '@/components/file-upload'
 import { DocumentList } from '@/components/document-list'
+import { DebugControls } from '@/components/debug-controls'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -14,6 +15,7 @@ interface DashboardClientProps {
 
 export default function DashboardClient({ userId }: DashboardClientProps) {
   const [refreshKey, setRefreshKey] = useState(0)
+  const [latestDocumentId, setLatestDocumentId] = useState<string | undefined>()
   const router = useRouter()
   const supabase = createClient()
 
@@ -24,6 +26,13 @@ export default function DashboardClient({ userId }: DashboardClientProps) {
 
   const handleUploadComplete = () => {
     setRefreshKey(prev => prev + 1)
+  }
+
+  const handleDocumentsChange = (documents: { id: string }[]) => {
+    // 最新のドキュメントIDを取得
+    if (documents.length > 0) {
+      setLatestDocumentId(documents[0].id)
+    }
   }
 
   return (
@@ -53,7 +62,16 @@ export default function DashboardClient({ userId }: DashboardClientProps) {
 
         <div>
           <h2 className="text-lg font-semibold mb-4">アップロード済みファイル</h2>
-          <DocumentList key={refreshKey} userId={userId} />
+          <DocumentList 
+            key={refreshKey} 
+            userId={userId} 
+            onDocumentsChange={handleDocumentsChange}
+          />
+        </div>
+
+        {/* デバッグコントロール */}
+        <div>
+          <DebugControls documentId={latestDocumentId} />
         </div>
       </main>
     </div>

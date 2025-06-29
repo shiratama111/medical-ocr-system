@@ -83,6 +83,8 @@ export class DocumentAIService {
       // テキスト抽出
       const text = document.text || ''
       
+      // Note: raw_text removed - using structured data fields instead
+      
       // 患者名の抽出
       const patientNameMatch = text.match(/患者.*?[:：]\s*([^\n\r]+)/i) || 
                               text.match(/氏名.*?[:：]\s*([^\n\r]+)/i)

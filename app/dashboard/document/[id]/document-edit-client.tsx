@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { ArrowLeft, Save, Download, FileText } from 'lucide-react'
+import { PDFViewer } from '@/components/pdf-viewer'
 
 interface Document {
   id: string
@@ -53,7 +54,10 @@ export default function DocumentEditClient({
   const [success, setSuccess] = useState(false)
   const supabase = createClient()
 
-  const handleInputChange = (field: string, value: string | number | null | { type: string; name: string }[]) => {
+  const handleInputChange = (
+    field: string, 
+    value: string | number | null | { type: string; name: string }[] | { item: string; amount: number }[] | { start_date?: string | null; end_date?: string | null; days?: number | null }
+  ) => {
     if (!extractedData) return
     
     setExtractedData({
@@ -99,8 +103,73 @@ export default function DocumentEditClient({
     })
   }
 
+  const validateData = () => {
+    const errors: string[] = []
+    
+    // 必須項目のチェック
+    if (!extractedData?.patient_name?.trim()) {
+      errors.push('患者名は必須項目です')
+    }
+    
+    if (!extractedData?.hospital_name?.trim()) {
+      errors.push('医療機関名は必須項目です')
+    }
+    
+    // 日付フォーマットのチェック
+    if (extractedData?.visit_dates) {
+      extractedData.visit_dates.forEach((date, index) => {
+        if (date && !date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          errors.push(`通院日${index + 1}の日付形式が正しくありません`)
+        }
+      })
+    }
+    
+    // 入院期間の妥当性チェック
+    if (extractedData?.inpatient_period?.start_date && extractedData?.inpatient_period?.end_date) {
+      const start = new Date(extractedData.inpatient_period.start_date)
+      const end = new Date(extractedData.inpatient_period.end_date)
+      if (start > end) {
+        errors.push('入院開始日は終了日より前の日付である必要があります')
+      }
+    }
+    
+    // 金額の妥当性チェック
+    if (extractedData?.total_cost !== undefined && extractedData.total_cost !== null && extractedData.total_cost < 0) {
+      errors.push('治療費総額は0以上の値を入力してください')
+    }
+    
+    if (extractedData?.cost_breakdown) {
+      extractedData.cost_breakdown.forEach((item, index) => {
+        if (!item.item?.trim()) {
+          errors.push(`費用内訳${index + 1}の項目名を入力してください`)
+        }
+        if (item.amount < 0) {
+          errors.push(`費用内訳${index + 1}の金額は0以上の値を入力してください`)
+        }
+      })
+    }
+    
+    // 診断名のチェック
+    if (extractedData?.diagnoses) {
+      extractedData.diagnoses.forEach((diag, index) => {
+        if (!diag.name?.trim()) {
+          errors.push(`診断名${index + 1}を入力してください`)
+        }
+      })
+    }
+    
+    return errors
+  }
+
   const handleSave = async () => {
     if (!extractedData) return
+    
+    // バリデーション
+    const validationErrors = validateData()
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join('、'))
+      return
+    }
     
     setIsLoading(true)
     setError(null)
@@ -213,8 +282,8 @@ export default function DocumentEditClient({
               <FileText className="h-5 w-5 mr-2" />
               原本PDF
             </h2>
-            <div className="border rounded-lg p-4 bg-gray-50 h-96 flex items-center justify-center">
-              <p className="text-gray-500">PDF表示機能は将来実装予定</p>
+            <div className="border rounded-lg bg-gray-50 h-[600px] overflow-hidden">
+              <PDFViewer fileUrl={document.file_url} fileName={document.file_name} />
             </div>
           </div>
 
@@ -298,6 +367,64 @@ export default function DocumentEditClient({
                 </div>
               </div>
 
+              {/* 入院期間 */}
+              <div>
+                <h3 className="font-medium text-gray-900 mb-3">入院期間</h3>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        入院開始日
+                      </label>
+                      <input
+                        type="date"
+                        value={extractedData.inpatient_period?.start_date || ''}
+                        onChange={(e) => {
+                          const newPeriod = {
+                            ...extractedData.inpatient_period,
+                            start_date: e.target.value
+                          }
+                          // 日数を再計算
+                          if (newPeriod.start_date && newPeriod.end_date) {
+                            const start = new Date(newPeriod.start_date)
+                            const end = new Date(newPeriod.end_date)
+                            newPeriod.days = Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1)
+                          }
+                          handleInputChange('inpatient_period', newPeriod)
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        入院終了日
+                      </label>
+                      <input
+                        type="date"
+                        value={extractedData.inpatient_period?.end_date || ''}
+                        onChange={(e) => {
+                          const newPeriod = {
+                            ...extractedData.inpatient_period,
+                            end_date: e.target.value
+                          }
+                          // 日数を再計算
+                          if (newPeriod.start_date && newPeriod.end_date) {
+                            const start = new Date(newPeriod.start_date)
+                            const end = new Date(newPeriod.end_date)
+                            newPeriod.days = Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1)
+                          }
+                          handleInputChange('inpatient_period', newPeriod)
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    入院日数: {extractedData.inpatient_period?.days || 0}日
+                  </p>
+                </div>
+              </div>
+
               {/* 金額情報 */}
               <div>
                 <h3 className="font-medium text-gray-900 mb-3">金額情報</h3>
@@ -312,6 +439,61 @@ export default function DocumentEditClient({
                       onChange={(e) => handleInputChange('total_cost', parseInt(e.target.value) || 0)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
+                  </div>
+                  
+                  {/* 費用内訳 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      費用内訳
+                    </label>
+                    <div className="space-y-2">
+                      {extractedData.cost_breakdown?.map((item, index) => (
+                        <div key={index} className="flex space-x-2">
+                          <input
+                            type="text"
+                            value={item.item}
+                            onChange={(e) => {
+                              const newBreakdown = [...(extractedData.cost_breakdown || [])]
+                              newBreakdown[index] = { ...item, item: e.target.value }
+                              handleInputChange('cost_breakdown', newBreakdown)
+                            }}
+                            placeholder="項目名"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <input
+                            type="number"
+                            value={item.amount}
+                            onChange={(e) => {
+                              const newBreakdown = [...(extractedData.cost_breakdown || [])]
+                              newBreakdown[index] = { ...item, amount: parseInt(e.target.value) || 0 }
+                              handleInputChange('cost_breakdown', newBreakdown)
+                            }}
+                            placeholder="金額"
+                            className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const newBreakdown = extractedData.cost_breakdown?.filter((_, i) => i !== index) || []
+                              handleInputChange('cost_breakdown', newBreakdown)
+                            }}
+                          >
+                            削除
+                          </Button>
+                        </div>
+                      ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newBreakdown = [...(extractedData.cost_breakdown || []), { item: '', amount: 0 }]
+                          handleInputChange('cost_breakdown', newBreakdown)
+                        }}
+                      >
+                        内訳を追加
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
