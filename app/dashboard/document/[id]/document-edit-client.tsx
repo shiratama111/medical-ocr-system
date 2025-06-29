@@ -228,6 +228,44 @@ export default function DocumentEditClient({
     }
   }
 
+  const handleTextDownload = async () => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/extract-text', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ documentId: document.id })
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'テキスト抽出に失敗しました')
+      }
+      
+      const { text, fileName } = await response.json()
+      
+      // テキストファイルとしてダウンロード
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+      const url = window.URL.createObjectURL(blob)
+      const link = window.document.createElement('a')
+      link.href = url
+      link.download = `${fileName.replace('.pdf', '')}_extracted_text.txt`
+      window.document.body.appendChild(link)
+      link.click()
+      window.URL.revokeObjectURL(url)
+      window.document.body.removeChild(link)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'テキスト抽出に失敗しました')
+      console.error(err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   if (!extractedData) {
     return (
       <div className="min-h-screen bg-gray-50 p-8">
@@ -261,6 +299,10 @@ export default function DocumentEditClient({
               </div>
             </div>
             <div className="flex space-x-2">
+              <Button onClick={handleTextDownload} variant="outline" disabled={isLoading}>
+                <FileText className="h-4 w-4 mr-2" />
+                {isLoading ? '抽出中...' : 'テキスト抽出'}
+              </Button>
               <Button onClick={handleDownload} variant="outline">
                 <Download className="h-4 w-4 mr-2" />
                 ダウンロード
